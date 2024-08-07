@@ -1,0 +1,6 @@
+.venv
+*.pt
+*.svo
+*.svo2
+__pycache__/
+models/train/
