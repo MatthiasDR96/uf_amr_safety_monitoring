@@ -4,12 +4,6 @@ import numpy as np
 import pyzed.sl as sl
 
 
-
-classes = ['AMR', 'Human']
-distance_threshold = 1
-
-
-
 # Converts yolo xywh to box object for ZED
 def xywh2abcd(xywh, im_shape):
     output = np.zeros((4, 2))
@@ -37,6 +31,7 @@ def xywh2abcd(xywh, im_shape):
     output[3][1] = y_max
     return output
 
+
 # Converts YOLO detections to custom box
 def detections_to_custom_box(detections, im0):
     output = []
@@ -53,6 +48,7 @@ def detections_to_custom_box(detections, im0):
     return output
 
 
+# Decides if object needs to be rendered
 def render_object(object_data, is_tracking_on):
     if is_tracking_on:
         return object_data.tracking_state == sl.OBJECT_TRACKING_STATE.OK
@@ -61,6 +57,7 @@ def render_object(object_data, is_tracking_on):
                     object_data.tracking_state == sl.OBJECT_TRACKING_STATE.OFF)
 
 
+# Draws a vertical line
 def draw_vertical_line(left_display, start_pt, end_pt, clr, thickness):
     n_steps = 7
     pt1 = [((n_steps - 1) * start_pt[0] + end_pt[0]) / n_steps
@@ -71,17 +68,19 @@ def draw_vertical_line(left_display, start_pt, end_pt, clr, thickness):
     cv2.line(left_display, (int(start_pt[0]), int(start_pt[1])), (int(pt1[0]), int(pt1[1])), clr, thickness)
     cv2.line(left_display, (int(pt4[0]), int(pt4[1])), (int(end_pt[0]), int(end_pt[1])), clr, thickness)
 
-def cvt(pt, scale):
-    """
-    Function that scales point coordinates
-    """
-    out = [pt[0] * scale[0], pt[1] * scale[1]]
-    return out
 
+# Scales point coordinates
+def cvt(pt, scale):
+    return [pt[0] * scale[0], pt[1] * scale[1]]
+
+
+# COmputes distance between two objects
 def get_distance(human, amr):
     return np.round(np.linalg.norm(human.position - amr.position), 2)
 
-def render_2D(left_display, img_scale, objects, is_tracking_on):
+
+# Renders objects
+def render_2D(left_display, img_scale, objects, is_tracking_on, classes, distance_threshold):
 
     # Init
     overlay = left_display.copy()
@@ -94,23 +93,27 @@ def render_2D(left_display, img_scale, objects, is_tracking_on):
             # Get object params
             object_velocity = obj.velocity # Get the object velocity in camera frame
             object_tracking_state = obj.action_state # Get the action state of the object
-                    
+
             # Set color of object based on distance from human to amrs
             if obj.raw_label == 0:
 
                 # Robot color
-                base_color = (185, 0, 255) # Blue color
+                base_color = (232, 176, 59, 255) # Blue color
 
             else:
 
                 # Compute distance from human to all AMRs
-                distance = min([get_distance(obj, obj_tmp) for obj_tmp in objects.object_list if obj_tmp.raw_label == 0])
+                distances = [get_distance(obj, obj_tmp) for obj_tmp in objects.object_list if obj_tmp.raw_label == 0]
+                if not len(distances) == 0: 
+                    min_distance = min(distances)
+                else:
+                    min_distance = distance_threshold
 
                 # Threshold distance
-                if distance < distance_threshold:
-                    base_color = (232, 176, 59) # Red color
+                if min_distance < distance_threshold:
+                    base_color = (185, 0, 255, 255) # Red color
                 else:
-                    base_color = (175, 208, 25) # Green color
+                    base_color = (175, 208, 25, 255) # Green color
 
             # Display image scaled 2D bounding box
             top_left_corner = cvt(obj.bounding_box_2d[0], img_scale)

@@ -1,5 +1,5 @@
 # Imports
-import sys
+import os
 import cv2
 import numpy as np
 from utils import *
@@ -7,11 +7,23 @@ import pyzed.sl as sl
 from time import sleep
 from ultralytics import YOLO
 from threading import Lock, Thread
+from flask import Flask, render_template, Response, request
+
+# Generate Flask app
+app = Flask(__name__, static_folder='../static', template_folder='../templates')
 
 # Set threading params
 lock = Lock()
 run_signal = False
 exit_signal = False
+
+# Set YOLO params
+weights = "./models/train/weights/best.pt"
+img_size = 416
+conf_thres = 0.5
+
+# Set human - amr distance threshold
+distance_threshold = 1
 
 # YOLO detection thread
 def torch_thread(weights, img_size, conf_thres=0.2, iou_thres=0.45):
@@ -52,10 +64,9 @@ def main():
 	# Set global variables
 	global image_net, exit_signal, run_signal, detections
 
-	# Set YOLO params
-	weights = "./models/train/weights/best.pt"
-	img_size = 416
-	conf_thres = 0.5
+	# Get object classes
+	file = open("./data/detection/classes.txt", "r")
+	classes = file.read().split('\n')[0:-1]
 
 	# Start thread
 	capture_thread = Thread(target=torch_thread, kwargs={'weights': weights, 'img_size': img_size, "conf_thres": conf_thres})
@@ -67,14 +78,14 @@ def main():
 
 	# Set input file
 	input_type = sl.InputType()
-	input_type.set_from_svo_file("./data/test_video_uf_07062024.svo")
+	#input_type.set_from_svo_file("./data/test_video_uf_07062024.svo")
 
 	# Set configuration parameters
 	init_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=True)
 	init_params.coordinate_units = sl.UNIT.METER
-	init_params.depth_mode = sl.DEPTH_MODE.ULTRA  # QUALITY
+	init_params.depth_mode = sl.DEPTH_MODE.ULTRA 
 	init_params.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Y_UP
-	init_params.camera_resolution = sl.RESOLUTION.HD2K # Use HD720 opr HD1200 video mode, depending on camera type.
+	init_params.camera_resolution = sl.RESOLUTION.HD2K
 	init_params.depth_maximum_distance = 50
 	init_params.sdk_verbose = 1
 
@@ -93,13 +104,6 @@ def main():
 	# Get camera info
 	camera_infos = zed.get_camera_information()
 	camera_res = camera_infos.camera_configuration.resolution
-
-	# Get camera calibration params
-	calibration_params = zed.get_camera_information().camera_configuration.calibration_parameters
-	focal_left_x = calibration_params.left_cam.fx # Focal length of the left eye in pixels
-	k1 = calibration_params.left_cam.disto[0] # First radial distortion coefficient
-	tx = calibration_params.stereo_transform.get_translation().get()[0] # Translation between left and right eye on x-axis
-	h_fov = calibration_params.left_cam.h_fov # Horizontal field of view of the left eye in degrees
 
 	# Set positional tracking parameters
 	positional_tracking_parameters = sl.PositionalTrackingParameters()
@@ -153,13 +157,22 @@ def main():
 
 			# 2D rendering
 			np.copyto(image_left_ocv, image_left.get_data())
-			render_2D(image_left_ocv, image_scale, objects, detection_parameters.enable_tracking)
+			render_2D(image_left_ocv, image_scale, objects, detection_parameters.enable_tracking, classes, distance_threshold)
 
+			# Resize image
+			final_image = cv2.resize(image_left_ocv, (1920, 1080))
+
+			# Show frame in browser
+			_, buffer = cv2.imencode('.jpg', final_image)
+			frame = buffer.tobytes()
+			yield (b'--frame\r\n'
+				   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
+			
 			# Show image
-			cv2.imshow("ZED | 2D View and Birds View", image_left_ocv)
-			key = cv2.waitKey(10)
-			if key == 27 or key == ord('q') or key == ord('Q'):
-				exit_signal = True
+			#cv2.imshow("UF AMR Safety Monitoring", final_image)
+			#key = cv2.waitKey(10)
+			#if key == 27 or key == ord('q') or key == ord('Q'):
+				#exit_signal = True
 
 		else:
 			exit_signal = True
@@ -168,8 +181,21 @@ def main():
 	exit_signal = True
 	zed.close()
 
+
+@app.route('/')
+def index():
+	return render_template('index.html')
+
+
+@app.route('/video')
+def video():
+	return Response(main(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
 if __name__ == "__main__":
-	main()
+
+	# Run app
+	app.run(host='0.0.0.0', port=8000)
 
 
 

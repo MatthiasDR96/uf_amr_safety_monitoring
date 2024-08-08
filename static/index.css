@@ -1,0 +1,47 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #00407A;
+}
+
+header {
+    height: 10vh;
+    background-color: #52BDEC;
+    color: white;
+    text-align: center;
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+
+.logo {
+    height: 10vh;
+}
+
+/* Style the title container */
+.title-container {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    flex-grow: 1;
+}
+
+/* Style the title */
+.title-container h1 {
+    margin: 0 auto; /* Add this line */
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    width: 100%;
+    height: 90vh;
+}
+
+#video { 
+    width: 100%;
+    height: 100%;
+}
