@@ -1,5 +1,7 @@
 # Ultimate Factory AMR Safety Monitoring
 
+![screenshot](screenshot_interface.png)
+
 ## Installation
 
 Clone this repository to your local working directory.
@@ -23,7 +25,7 @@ On the remote host, pull the image
 ssh user@remote-server
 docker login
 docker pull username/my-app:latest
-docker run --gpus all --runtime nvidia --rm -it --privileged -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix username/my-app:latest 
+docker run --gpus all --runtime nvidia --rm -it --privileged -p 8000:8000 -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix username/my-app:latest 
 ```
 ## Usage
 
@@ -48,7 +50,7 @@ scp -r ./scripts/ nano@hostname:uf_amr_safety_monitoring/scripts
 When starting the docker container, mount the working volume consisting of the files in /scripts on the remote machine to the folder in the docker container where these files are located, e.g. /uf_amr_safety_monitoring/scripts. 
 
 ```bash
-sudo docker run --gpus all --runtime nvidia --rm -it --privileged -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $(pwd):/uf_amr_safety_monitoring  username/my-app:latest 
+sudo docker run --gpus all --runtime nvidia --rm -it --privileged -p 8000:8000 -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $(pwd):/uf_amr_safety_monitoring  username/my-app:latest 
 ```
 
 When running the container, the files will now be synced with the ones on the remote machine which can be modified from the local machine. 

@@ -25,6 +25,10 @@ conf_thres = 0.5
 # Set human - amr distance threshold
 distance_threshold = 1
 
+# Get object classes
+file = open("./data/detection/classes.txt", "r")
+classes = file.read().split('\n')[0:-1]
+
 # YOLO detection thread
 def torch_thread(weights, img_size, conf_thres=0.2, iou_thres=0.45):
 
@@ -58,78 +62,74 @@ def torch_thread(weights, img_size, conf_thres=0.2, iou_thres=0.45):
 		# Sleep
 		sleep(0.01)
 
+# Start thread
+capture_thread = Thread(target=torch_thread, kwargs={'weights': weights, 'img_size': img_size, "conf_thres": conf_thres})
+capture_thread.start()
+
+# Initializing camera
+print("Initializing Camera...")
+zed = sl.Camera()
+
+# Set input file
+input_type = sl.InputType()
+#input_type.set_from_svo_file("./data/test_video_uf_07062024.svo")
+
+# Set configuration parameters
+init_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=True)
+init_params.coordinate_units = sl.UNIT.METER
+init_params.depth_mode = sl.DEPTH_MODE.ULTRA 
+init_params.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Y_UP
+init_params.camera_resolution = sl.RESOLUTION.HD2K
+init_params.depth_maximum_distance = 50
+init_params.sdk_verbose = 1
+
+# Set runtime parameters
+runtime_params = sl.RuntimeParameters()
+status = zed.open(init_params)
+
+# Check camera status
+if status != sl.ERROR_CODE.SUCCESS:
+	print(repr(status))
+	exit()
+
+# Camera initialization finished
+print("Initialized Camera")
+
+# Get camera info
+camera_infos = zed.get_camera_information()
+camera_res = camera_infos.camera_configuration.resolution
+
+# Set positional tracking parameters
+positional_tracking_parameters = sl.PositionalTrackingParameters()
+positional_tracking_parameters.set_as_static = True
+zed.enable_positional_tracking(positional_tracking_parameters)
+
+# Set object detection parameters
+detection_parameters = sl.ObjectDetectionParameters()
+detection_parameters.detection_model = sl.OBJECT_DETECTION_MODEL.CUSTOM_BOX_OBJECTS # choose a detection model
+detection_parameters.enable_tracking = True # Objects will keep the same ID between frames
+detection_parameters.enable_segmentation = False # Outputs 2D masks over detected objects
+zed.enable_object_detection(detection_parameters)
+
+# Set runtime parameters
+detection_parameters_rt = sl.ObjectDetectionRuntimeParameters()
+detection_parameters_rt.detection_confidence_threshold = 25
+
+# Utilities for 2D display
+image_left = sl.Mat()
+display_resolution = sl.Resolution(min(camera_res.width, 1280), min(camera_res.height, 720))
+image_scale = [display_resolution.width / camera_res.width, display_resolution.height / camera_res.height]
+image_left_ocv = np.full((display_resolution.height, display_resolution.width, 4), [245, 239, 239, 255], np.uint8)
+
+# Create empty image object and objects object
+image_left_tmp = sl.Mat()
+objects = sl.Objects()
+
 # Main loop
 def main():
 	
 	# Set global variables
 	global image_net, exit_signal, run_signal, detections
-
-	# Get object classes
-	file = open("./data/detection/classes.txt", "r")
-	classes = file.read().split('\n')[0:-1]
-
-	# Start thread
-	capture_thread = Thread(target=torch_thread, kwargs={'weights': weights, 'img_size': img_size, "conf_thres": conf_thres})
-	capture_thread.start()
-
-	# Initializing camera
-	print("Initializing Camera...")
-	zed = sl.Camera()
-
-	# Set input file
-	input_type = sl.InputType()
-	#input_type.set_from_svo_file("./data/test_video_uf_07062024.svo")
-
-	# Set configuration parameters
-	init_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=True)
-	init_params.coordinate_units = sl.UNIT.METER
-	init_params.depth_mode = sl.DEPTH_MODE.ULTRA 
-	init_params.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Y_UP
-	init_params.camera_resolution = sl.RESOLUTION.HD2K
-	init_params.depth_maximum_distance = 50
-	init_params.sdk_verbose = 1
-
-	# Set runtime parameters
-	runtime_params = sl.RuntimeParameters()
-	status = zed.open(init_params)
-
-	# Check camera status
-	if status != sl.ERROR_CODE.SUCCESS:
-		print(repr(status))
-		exit()
-
-	# Camera initialization finished
-	print("Initialized Camera")
-
-	# Get camera info
-	camera_infos = zed.get_camera_information()
-	camera_res = camera_infos.camera_configuration.resolution
-
-	# Set positional tracking parameters
-	positional_tracking_parameters = sl.PositionalTrackingParameters()
-	positional_tracking_parameters.set_as_static = True
-	zed.enable_positional_tracking(positional_tracking_parameters)
-
-	# Set object detection parameters
-	detection_parameters = sl.ObjectDetectionParameters()
-	detection_parameters.detection_model = sl.OBJECT_DETECTION_MODEL.CUSTOM_BOX_OBJECTS # choose a detection model
-	detection_parameters.enable_tracking = True # Objects will keep the same ID between frames
-	detection_parameters.enable_segmentation = False # Outputs 2D masks over detected objects
-	zed.enable_object_detection(detection_parameters)
-
-	# Set runtime parameters
-	detection_parameters_rt = sl.ObjectDetectionRuntimeParameters()
-	detection_parameters_rt.detection_confidence_threshold = 25
-
-	# Utilities for 2D display
-	image_left = sl.Mat()
-	display_resolution = sl.Resolution(min(camera_res.width, 1280), min(camera_res.height, 720))
-	image_scale = [display_resolution.width / camera_res.width, display_resolution.height / camera_res.height]
-	image_left_ocv = np.full((display_resolution.height, display_resolution.width, 4), [245, 239, 239, 255], np.uint8)
-
-	# Create empty image object and objects object
-	image_left_tmp = sl.Mat()
-	objects = sl.Objects()
 
 	# Loop
 	while not exit_signal:
