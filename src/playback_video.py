@@ -87,7 +87,7 @@ def main():
             if key == 115 :# for 's' key
                 #save .svo image as a png
                 cam.retrieve_image(mat)
-                filepath = datadir + "capture_" + str(svo_position) + ".png"
+                filepath = data_dir + "capture_" + str(svo_position) + ".png"
                 img = mat.write(filepath)
                 if img == sl.ERROR_CODE.SUCCESS:
                     print("Saved image : ",filepath)

@@ -7,10 +7,10 @@ WORKDIR /uf_amr_safety_monitoring
 # Copy the necessary files and directories into the container
 COPY data/ /uf_amr_safety_monitoring/data/
 COPY models/ /uf_amr_safety_monitoring/models/
-COPY scripts/ /uf_amr_safety_monitoring/scripts/
+COPY src/ /uf_amr_safety_monitoring/src/
 COPY static/ /uf_amr_safety_monitoring/static/
 COPY templates/ /uf_amr_safety_monitoring/templates/ 
-COPY requirements.txt start.sh yolov8n.pt /uf_amr_safety_monitoring/
+COPY main.py requirements.txt start.sh yolov8n.pt /uf_amr_safety_monitoring/
 
 # Set file permissions
 RUN chmod +x /uf_amr_safety_monitoring/scripts/main.py

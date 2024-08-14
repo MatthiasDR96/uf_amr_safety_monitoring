@@ -1,8 +1,9 @@
 # Imports
 import os
 import cv2
+import subprocess
 import numpy as np
-from utils import *
+from src.utils import *
 import pyzed.sl as sl
 from time import sleep
 from ultralytics import YOLO
@@ -10,7 +11,7 @@ from threading import Lock, Thread
 from flask import Flask, render_template, Response, request
 
 # Generate Flask app
-app = Flask(__name__, static_folder='../static', template_folder='../templates')
+app = Flask(__name__, static_folder='./static', template_folder='./templates')
 
 # Set threading params
 lock = Lock()
