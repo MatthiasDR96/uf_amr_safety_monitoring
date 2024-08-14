@@ -31,7 +31,7 @@ import os
 
 
 # Set the video path and the folder in which you want to store the captured images
-input_svo_file = './data/video_recording.svo2'
+input_svo_file = './data/video_recording.svoss'
 data_dir = './data/raw_images/'
 
 
